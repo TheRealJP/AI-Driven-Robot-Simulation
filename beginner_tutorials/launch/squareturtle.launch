@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="turtlesim" type="turtlesim_node" name="Turtlesim" output="screen" />
+  <node pkg="beginner_tutorials" type="squareturtle.py" name="SquareTurtle" output="screen" />
+</launch>
