@@ -1,104 +1,129 @@
 #!/usr/bin/env python
-#
-#    noodstop.py - Version 0.1 G. De Paepe
-#        
-#    robot beweegt in x-richting met snelheid "speed"
-#    robot stop:
-#       - als hij minder dan een "threshold" afstand van een obstakel komt
-#       - wanneer er geen scan informatie is
-#    afstandsberekening:
-#       - neemt gemiddelde van "nbr_mid" middelste punten in laserscan
-#
 
 import rospy
+import random
+import sys
+from math import pi
+from math import isnan
+from math import sqrt
+
 from roslib import message
 from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Twist
 from std_msgs.msg import String
-from math import isnan
 
-class NoodStop():
-    def __init__(self):
-        rospy.init_node("noodstop")
-        
-        # Set the shutdown function (stop the robot)
+
+def dev(x, l):
+    n = len(l)
+    avg = sum(l) / n
+    return (x - avg) ** 2
+
+
+def std_dev(l):
+    n = len(l)
+    stddev = 0
+    for x in l:
+        stddev += dev(x, l)
+    return sqrt(stddev / (n - 1))
+
+
+def avg_minimum(l, n_min):
+    dist = n = 0
+    stddev = std_dev(l)
+    min_dists = [max(l) for _ in range(n_min)]
+    max_min_dists = max(min_dists)
+
+    # Compute weighted avg minimum distance, skip NaN
+    for point in l:
+        if not isnan(point):
+            # Get deviation to remove outliers
+            d = dev(point, l)
+            if (d < 3 * stddev or d > -3 * stddev) and point < max_min_dists:
+                min_dists[min_dists.index(max_min_dists)] = point
+                max_min_dists = max(min_dists)
+        n += 1
+    dist = sum(min_dists) / n_min
+    rospy.loginfo('dist: %s, nbr of points %s', str(dist), str(n))
+
+    return dist
+
+
+class Noodstop:
+    def __init__(self, topic, threshold, linear_speed, angular_speed, rate):
+        # Init
+        rospy.init_node('Noodstop', anonymous=False)
         rospy.on_shutdown(self.shutdown)
 
-        # How far away (in m) before the robot stops
-        self.threshold = 0.5
+        self.__cmd_vel = rospy.Publisher(topic, Twist, queue_size=1)
 
-        # The speed in meters per second
-        self.speed = 0.1
+        # Parameters
+        self.__threshold = threshold
+        self.__linear_speed = linear_speed
+        self.__angular_speed = angular_speed
+        self.__move_cmd = Twist()
+        self.__rate = rate
+        self.__ticks = 0
+        self.__current_tick = 0
+        self.__turning = False
+        rospy.Rate(rate)
 
-        # Set rate to update robot's movement
-        r = rospy.Rate(10)
-
-        # Initialize the movement command
-        self.move_cmd = Twist()
-
-        # Publisher to control the robot's movement
-        self.cmd_vel_pub = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist, queue_size=5)
-
-        # Subscribe to the laserscan
-        self.scan_subscriber = rospy.Subscriber('/scan', LaserScan, self.set_cmd_vel)
-
-        rospy.loginfo("Subscribing to laserscan...")
-        
-        # Wait for the laserscan topic to become available
+        # Subscriptions
+        self.__scanner = rospy.Subscriber('/scan', LaserScan, self.set_cmd_vel)
+        rospy.loginfo('wait')
         rospy.wait_for_message('/scan', LaserScan)
 
-        rospy.loginfo("Ready to start!")
-                    
-        while not rospy.is_shutdown():
-            # Publish the movement command
-            self.cmd_vel_pub.publish(self.move_cmd)
-            r.sleep
-        
+        # Spin
+        rospy.loginfo('spin')
+        rospy.spin()
+
     def set_cmd_vel(self, msg):
-        # Initialization
-        dist = n = 0
+        rospy.loginfo('Turning: %s; Ticks: %s / %s',
+                      str(self.__turning), str(self.__current_tick), str(self.__ticks))
+        move = self.scan(msg)
 
-        # Get indexes to filter the "nbr_mid" middle point out of the laserscan points
-        len_scan = len(msg.ranges)
-        nbr_mid = 50
-        if (len_scan > nbr_mid):
-            midrange_min = int((len_scan-nbr_mid)/2)
-            midrange_max = midrange_min + nbr_mid
+        # Move forward if possible
+        if move and not self.__turning:
+            rospy.loginfo('move forward')
+            self.__move_cmd.angular.z = 0
+            self.__move_cmd.linear.x = self.__linear_speed
+            self.__cmd_vel.publish(self.__move_cmd)
+        # Else turn
         else:
-            range_min = 0
-            range_max = len_scan = len(msg.ranges)
+            rospy.loginfo('turn')
+            self.__move_cmd.linear.x = 0
+            self.__move_cmd.angular.z = self.__angular_speed
+            self.turn()
 
-        # Compute average distance out of the middle points, skip NaN
-        for point in msg.ranges[midrange_min:midrange_max]:
-            if not isnan(point):
-                dist += point
-                n += 1
-        # If no points, keep dist equal to zero
-        if n:
-            dist /= n 
-        rospy.loginfo("dist: %s, nbr of points %s",String(dist),String(n))
-
-        # Move if dist is greater then threshold, else set speed to zero
-        if (dist > self.threshold):
-            self.move_cmd.linear.x = self.speed
+    def turn(self):
+        if self.__current_tick < 1:
+            min = pi / 2
+            max = pi * 3 / 2
+            angle = random.random() * (max - min) + min
+            rospy.loginfo('turning %s radians', angle)
+            angular_duration = angle / self.__angular_speed
+            self.__ticks = int(angular_duration * self.__rate)
+            self.__turning = True
+            self.__current_tick = 1
+        elif self.__current_tick >= self.__ticks:
+            self.__current_tick = 0
+            self.__turning = False
         else:
-            self.move_cmd.linear.x = 0
+            rospy.loginfo('turning at %s radians / s', str(self.__move_cmd.angular.z))
+            self.__cmd_vel.publish(self.__move_cmd)
+            self.__current_tick += 1
 
-    
+    def scan(self, msg):
+        dist = avg_minimum(msg.ranges, len(msg.ranges) / 10)
+        return dist > self.__threshold
+
     def shutdown(self):
-        rospy.loginfo("Stopping the robot...")
-        
-        # Unregister the subscriber to stop cmd_vel publishing
-        self.scan_subscriber.unregister()
+        rospy.loginfo('Stopping Roomba')
+        self.__cmd_vel.publish(Twist())
         rospy.sleep(1)
-        
-        # Send an emtpy Twist message to stop the robot
-        self.cmd_vel_pub.publish(Twist())
-        rospy.sleep(1)        
+
 
 if __name__ == '__main__':
     try:
-        NoodStop()
-    except rospy.ROSInterruptException:
-        rospy.loginfo("Noodstop node terminated.")
-
+        roomba = Noodstop('/mobile_base/commands/velocity', .5, .2, .3, 10)
+    except:
+        rospy.loginfo('Roomba node terminated.')

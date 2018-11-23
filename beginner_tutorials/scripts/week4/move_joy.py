@@ -3,6 +3,7 @@ import rospy
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Joy
 
+
 def input(data):
     # rospy.loginfo(data.axes)
     twist = Twist()
@@ -25,7 +26,6 @@ def input(data):
 
 # Intializes everything
 def start():
-
     # publishing to "turtle1/cmd_vel" to control turtle1
     global pub
     pub = rospy.Publisher('turtle1/cmd_vel', Twist)
