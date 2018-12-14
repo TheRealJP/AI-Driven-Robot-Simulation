@@ -1,4 +1,14 @@
 <launch>
-  <node pkg="turtlebot" type="turtlebot_stage" name="TurtleBot" output="screen" />
-  <node pkg="beginner_tutorials" type="run_ai_robot.py" name="MoveJoy" output="screen" />
+    <!--<node pkg="turtlebot" type="turtlebot_gazebo" name="TurtleBot" output="screen" />-->
+    <!--<node pkg="beginner_tutorials" type="agent_dynamics.py" name="robot_dyn" output="screen"/>-->
 </launch>
+
+
+
+<!--<launch>-->
+  <!--&lt;!&ndash; We resume the logic in empty_world.launch, changing only the name of the world to be launched &ndash;&gt;-->
+  <!--<include file="/launch/empty_world.launch">-->
+    <!--<arg name="world_name" value="$(find eman_gazebo)/worlds/eman_gazebo.world"/>-->
+    <!--&lt;!&ndash; more default parameters can be changed here &ndash;&gt;-->
+  <!--</include>-->
+<!--</launch>-->

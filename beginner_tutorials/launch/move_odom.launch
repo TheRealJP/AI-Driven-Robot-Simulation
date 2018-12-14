@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="turtlebot" type="turtlebot_stage" name="TurtleBot" output="screen" />
+    <node pkg="beginner_tutorials" type="move_odom.py" name="odom_test" output="screen"/>
+</launch>
