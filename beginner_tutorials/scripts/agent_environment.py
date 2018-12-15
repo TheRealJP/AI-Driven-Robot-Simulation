@@ -113,7 +113,9 @@ class AgentEnvironment:
         extract the optimal path
         :return:
         """
-        with open('../voorbeeld_policy.csv', 'r') as f:
+        with open(
+                '/home/gandalf/catkin_ws/src/ROS_Robotics/beginner_tutorials/scripts/Skynet_alpha/voorbeeld_policy.csv',
+                'r') as f:
             reader = csv.reader(f)
             for file_row in reader:
                 if float(file_row[2]) > 0.5:

@@ -1,4 +1,4 @@
 <launch>
-  <node pkg="turtlebot" type="turtlebot_stage" name="TurtleBot" output="screen" />
-  <node pkg="beginner_tutorials" type="noodstop.py" name="MoveJoy" output="screen" />
+    <node pkg="turtlebot" type="turtlebot_stage" name="TurtleBot" output="screen"/>
+    <node pkg="beginner_tutorials" type="noodstop.py" name="MoveJoy" output="screen"/>
 </launch>

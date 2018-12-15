@@ -1,18 +1,20 @@
 #! /usr/bin/env python
 
 # ros gaat niet verder dan scripts zoeken
-from agent_environment import AgentEnvironment
+# from agent_environment import AgentEnvironment
 
 import rospy
-import sys
 from math import pi
 from math import isnan
 from math import sqrt
+
+from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Twist
+import csv
+import math
 
-sys.path.append(
-    '/home/jonathanpeers/catkin_ws/src/ROS_Robotics/beginner_tutorials/scripts/Skynet_alpha/robotics/environment')
+from agent_environment import AgentEnvironment
 
 """
 todo: translate states to coordinates on the go? starting with the current coordinate as a parameter
@@ -55,10 +57,13 @@ def avg_minimum(l, n_min):
     return dist
 
 
+# subscribers in commentaar --> geen actie meer, blijft wachten
+# dus init node name niet echt invloed
+# cmd_vel gebruiken..
 class Robot:
-    def __init__(self, topic, threshold, linear_speed, angular_speed, rate):
+    def __init__(self, topic, threshold, linear_speed, angular_speed, rate, env):
         # Init
-        rospy.init_node('AI_Robot', anonymous=False)
+        rospy.init_node('run_ai_robot', anonymous=False)
         rospy.on_shutdown(self.shutdown)
 
         self.__cmd_vel = rospy.Publisher(topic, Twist, queue_size=1)
@@ -74,8 +79,14 @@ class Robot:
         self.__turning = False
         rospy.Rate(rate)
 
+        # Direction & Rotationdata
+        self.robot_env = env
+        self.robot_env.fill_optimal_path()
+        self.action = int(self.robot_env.direction_facing)  # first action
+
         # Subscriptions
         self.__scanner = rospy.Subscriber('/scan', LaserScan, self.set_cmd_vel)
+        # rospy.Subscriber('/odom', Odometry, self.get_odom)
         rospy.loginfo('wait')
         rospy.wait_for_message('/scan', LaserScan)
 
@@ -83,14 +94,14 @@ class Robot:
         rospy.loginfo('spin')
         rospy.spin()
 
-        # Direction & Rotationdata
-        self.robot_env = AgentEnvironment(4, 4, 15)
-        self.robot_env.fill_optimal_path()
-        self.action = int(self.robot_env.direction_facing)  # first action
+    def get_odom(self, odom_data):
+        # Callback function for /odom topic
+        self.position = odom_data.pose.pose.position
 
     def set_cmd_vel(self, msg):
-        rospy.loginfo('Turning: %s; Ticks: %s / %s',
-                      str(self.__turning), str(self.__current_tick), str(self.__ticks))
+        rospy.loginfo('Turning: %s; Ticks: %s / %s', str(self.__turning), str(self.__current_tick), str(self.__ticks))
+
+        # scan distance to wall from the camerapoint
         move = self.scan(msg)
 
         # Move forward if possible
@@ -100,7 +111,6 @@ class Robot:
             rospy.loginfo('move forward')
             self.__move_cmd.angular.z = 0
             self.__move_cmd.linear.x = self.__linear_speed
-            self.__ticks = 5
             self.__cmd_vel.publish(self.__move_cmd)
 
             # update to the next action
@@ -118,7 +128,7 @@ class Robot:
         if self.__current_tick < 1:
             # returns radians to be turned with a given action
             angle = self.robot_env.rotate(self.action)
-
+            rospy.loginfo(angle)
             rospy.loginfo('turning %s radians (90 degrees)', angle)
             angular_duration = angle / self.__angular_speed
             self.__ticks = int(angular_duration * self.__rate)
@@ -134,6 +144,10 @@ class Robot:
             self.__cmd_vel.publish(self.__move_cmd)
             self.__current_tick += 1
 
+    def scan_distance(self, msg):
+        dist = avg_minimum(msg.ranges, len(msg.ranges) / 10)
+        return dist
+
     def scan(self, msg):
         dist = avg_minimum(msg.ranges, len(msg.ranges) / 10)
         return dist > self.__threshold
@@ -146,7 +160,7 @@ class Robot:
 
 if __name__ == '__main__':
     try:
-        # print (sys.path)
-        roomba = Robot('/mobile_base/commands/velocity', .5, .2, .3, 10)
+        env = AgentEnvironment(4, 4, 15)
+        roomba = Robot('/mobile_base/commands/velocity', 1, .2, .3, 10, env)
     except:
         rospy.loginfo('Roomba node terminated.')

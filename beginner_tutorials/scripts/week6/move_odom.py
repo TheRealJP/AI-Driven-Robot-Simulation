@@ -9,6 +9,7 @@ from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from math import sqrt, pow
 
+
 class MoveOdom():
     def __init__(self):
         # Give the node a name
@@ -19,11 +20,11 @@ class MoveOdom():
 
         # Publisher to control the robot's speed
         self.cmd_vel = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist, queue_size=5)
-        
+
         # How fast will we update the robot's movement?
         rate = 50
         r = rospy.Rate(rate)
-        
+
         # Set the linear and the goal distance
         linear_speed = 0.2
         goal_distance = 1.0
@@ -52,7 +53,7 @@ class MoveOdom():
 
         # Stop the robot
         self.cmd_vel.publish(Twist())
-        
+
     def get_odom(self, odom_data):
         # Callback function for /odom topic
         self.position = odom_data.pose.pose.position
@@ -62,10 +63,10 @@ class MoveOdom():
         rospy.loginfo("Stopping the robot...")
         self.cmd_vel.publish(Twist())
         rospy.sleep(1)
- 
+
+
 if __name__ == '__main__':
     try:
         MoveOdom()
     except:
         rospy.loginfo("move_odom node terminated.")
-
