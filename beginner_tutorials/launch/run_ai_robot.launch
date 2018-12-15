@@ -16,6 +16,7 @@
         <arg name="world_name" value="$(arg world_file)"/> <!--get world variable-->
     </include>
 
+    <!--geen idee wat dit doet , maar 't zat ook in turtlebot_world.launch als node-->
     <include file="$(find turtlebot_gazebo)/launch/includes/$(arg base).launch.xml">
         <arg name="base" value="$(arg base)"/>
         <arg name="stacks" value="$(arg stacks)"/>

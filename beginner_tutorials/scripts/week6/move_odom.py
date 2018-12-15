@@ -37,6 +37,7 @@ class MoveOdom():
         rospy.sleep(1)
 
         # Track current position
+
         x_start = self.position.x
         y_start = self.position.y
 
