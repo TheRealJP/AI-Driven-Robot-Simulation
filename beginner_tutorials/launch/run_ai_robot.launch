@@ -1,16 +1,10 @@
-<!--<launch>-->
-<!--&lt;!&ndash;<node pkg="turtlebot" type="turtlebot_gazebo" name="TurtleBot" output="screen" />&ndash;&gt;-->
-<!--&lt;!&ndash;<node pkg="beginner_tutorials" type="agent_dynamics.py" name="robot_dyn" output="screen"/>&ndash;&gt;-->
-<!--</launch>-->
-
 <launch>
-    <arg name="world_file" default="beginner_tutorials/worlds/sim_updated"/>
+    <arg name="world_file" default="/home/gandalf/catkin_ws/src/ROS_Robotics/beginner_tutorials/worlds/static_boxes"/>
 
-    <include file="$(find gazebo_ros)/launch/empty_world.launch">
-        <arg name="debug" value="true"/>
-        <arg name="world_name" value="$(arg world_file)"/>
+    <include file="/opt/ros/kinetic/share/gazebo_ros/launch/empty_world.launch">
+        <arg name="debug" value="true"/> <!--shows extra info in console about launch process-->
+        <arg name="world_name" value="$(arg world_file)"/> <!--get world variable-->
     </include>
 
-    <!--<node pkg="turtlebot_gazebo" type="turtlebot_gazebo" name="TurtleBot" output="screen"/>-->
-    <node pkg="ROS_Robotics" type="agent_dynamics.py" name="AI_Robot" output="screen"/>
+    <node pkg="beginner_tutorials" type="agent_dynamics.py" name="AI_Robot" output="screen"/>
 </launch>
