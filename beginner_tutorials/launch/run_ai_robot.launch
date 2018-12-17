@@ -12,7 +12,7 @@
     <include file="/opt/ros/kinetic/share/gazebo_ros/launch/empty_world.launch">
         <arg name="use_sim_time" value="true"/>
         <arg name="gui" value="$(arg gui)"/>
-        <arg name="debug" value="false"/> <!--shows extra info in console about launch process-->
+        <arg name="debug" value="true"/> <!--shows extra info in console about launch process-->
         <arg name="world_name" value="$(arg world_file)"/> <!--get world variable-->
     </include>
 
@@ -35,9 +35,9 @@
         <param name="output_frame_id" value="/camera_depth_frame"/>
         <param name="range_min" value="0.45"/>
         <remap from="image" to="/camera/depth/image_raw"/>
-        <remap from="scan" to="/scan"/>
+        <remap from="scan" to="/kobuki/laser/scan"/>
     </node>
 
     <!--<node pkg="turtlebot" type="turtlebot_stage" name="TurtleBot" output="screen"/>-->
-    <node pkg="beginner_tutorials" type="agent_dynamics.py" name="AI_Robot" output="screen"/>
+    <!--<node pkg="beginner_tutorials" type="agent_dynamics.py" name="AI_Robot" output="screen"/>-->
 </launch>
