@@ -92,13 +92,13 @@ class Robot:
         # Direction & Rotationdatax
         self.robot_env = env
         self.robot_env.fill_optimal_path()
-        self.action = self.robot_env.direction_facing
+        self.action = self.get_action_current_state()
 
         # move
         self.next_position = 0
         self.__can_move = True
         self.__dist = 0
-        self.__position = None
+        self.__pos = None
         self.__y_start = 0
         self.__x_start = 0
         self.__goal_distance = 1
@@ -127,8 +127,12 @@ class Robot:
 
     def calc_euclidian_distance(self):
         # first round it doesnt get a distance
-        return sqrt(pow((self.__position.x - self.__x_start), 2) +
-                    pow((self.__position.y - self.__y_start), 2))
+        return sqrt(pow((self.__pos.x - self.__x_start), 2) +
+                    pow((self.__pos.y - self.__y_start), 2))
+
+    def get_action_current_state(self):
+        current_state = self.robot_env.current_state
+        return int(self.robot_env.optimal_path[current_state].action)
 
     def callback_scan(self, msg):
         if msg.header.frame_id == "/camera_depth_frame":
@@ -141,11 +145,7 @@ class Robot:
     def callback_odom(self, msg):
         # rospy.loginfo('Turning: %s; Ticks: %s / %s', str(self.__turning), str(self.__current_tick), str(self.__ticks))
 
-        if msg.header.frame_id == "odom":
-            self.__position = msg.pose.pose.position
-            orientation_q = msg.pose.pose.orientation
-            orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
-            self.__roll, self.__pitch, self.__yaw = euler_from_quaternion(orientation_list)
+        self.__pos = msg.pose.pose.position
 
         """
         $scanner gives back total distance from where you stand
@@ -155,36 +155,64 @@ class Robot:
         Move forward if possible and when not turning and when you passed the set distance goal
         """
         has_moving_ended = self.__goal_distance > self.__dist
-
-        if self.__can_move and not self.__turning and has_moving_ended:
+        turn_first = self.action != self.get_action_current_state()
+        if self.__can_move and not self.__turning and has_moving_ended and not turn_first:
             self.move()
         else:
-            self.turn()
+            self.turn(msg)
+            self.__dist = 0  # reset moving distance of the robot
 
-    def scan(self, msg):
-        dist = avg_minimum(msg.ranges, len(msg.ranges) / 10)
-        # rospy.loginfo('msg distance: %s', avg_minimum(msg.ranges, len(msg.ranges) / 10))
-        return dist > self.__threshold, dist
+    def move(self):
+        # setting up everything before starting (think calc_euclidian_distance())
+        if self.__move_cmd.linear.x == 0.0:
+            # step gives back the next action based on the current action
+            self.action = self.robot_env.step(self.get_action_current_state())
 
-    def turn(self):
+            # save start of the movement
+            self.__x_start = self.__pos.x
+            self.__y_start = self.__pos.y
+            self.__move_cmd.angular.z = 0
+            self.__move_cmd.linear.x = self.__linear_speed
+            return
+        else:
+            rospy.loginfo('move forward--> current location; x -> %s , y -> %s', self.__pos.x, self.__pos.y)
+            rospy.loginfo('distance done by robot: %s', self.__dist)
+
+            self.__cmd_vel.publish(self.__move_cmd)
+            speed = self.__goal_distance - self.__dist
+
+            # lowest speed limit or decrementing speed value
+            self.__move_cmd.linear.x = speed if speed > self.__linear_speed else self.__linear_speed
+
+            # robot moved so now we calculate the distance
+            self.__dist = self.calc_euclidian_distance()
+
+    def turn(self, msg):
         rospy.loginfo('turn')
+        # fetch angle (doesnt stay filled for some reason when you isolate it inside an if statement)
         self.__angle = self.robot_env.rotate(self.action)
+
+        # using yaw to make error margin smaller
+        orientation_q = msg.pose.pose.orientation
+        orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
+        self.__roll, self.__pitch, self.__yaw = euler_from_quaternion(orientation_list)
 
         # config for the start of the turn
         if self.__current_tick < 1:
-            self.__dist = 0  # reset moving distance of the robot
             self.__move_cmd.linear.x = 0
-            self.__move_cmd.angular.z = self.__angular_speed
+            self.__move_cmd.angular.z = self.__angular_speed if self.robot_env.pos_rotation else -self.__angular_speed
 
             # returns radians to be turned with a given action
             rospy.loginfo('turning %s radians (%s degrees)', self.__angle, self.__angle * 180 / math.pi)
 
             # how long will it take to turn
             angular_duration = self.__angle / self.__angular_speed
-            self.__ticks = int(angular_duration * self.__rate)
+            self.__ticks = abs(int(angular_duration * self.__rate))
 
             self.__turning = True
             self.__current_tick = 1
+
+            # bug: -52 ticks < 1 tick
 
         # stop turning
         elif self.__current_tick >= self.__ticks:
@@ -203,35 +231,10 @@ class Robot:
         self.__cmd_vel.publish(Twist())
         rospy.sleep(1)
 
-    def move(self):
-        if self.__move_cmd.linear.x == 0.0:
-            # update next distance
-            #     self.next_position = self.__dist - 1
-            #     rospy.loginfo('next_position: %s', self.next_position)
-
-            # step gives back the next action based on the current action
-            current_state = self.robot_env.current_state
-            current_action = self.robot_env.optimal_path[current_state].action
-            self.action = self.robot_env.step(current_action)
-
-            # save start of the movement
-            self.__x_start = self.__position.x
-            self.__y_start = self.__position.y
-            self.__move_cmd.angular.z = 0
-            self.__move_cmd.linear.x = self.__linear_speed
-            return
-
-        if self.__move_cmd.linear.x != 0.0:
-            rospy.loginfo('move forward--> current location; x -> %s , y -> %s', self.__position.x,
-                          self.__position.y)
-            rospy.loginfo('distance done by robot: %s', self.__dist)
-            self.__cmd_vel.publish(self.__move_cmd)
-            speed = self.__goal_distance - self.__dist
-            self.__move_cmd.linear.x = speed if speed > self.__linear_speed else self.__linear_speed  # 1 - 0 = 0
-
-            # if msg.header.frame_id == "odom":
-            # robot moved so now we calculate the distance
-        self.__dist = self.calc_euclidian_distance()
+    def scan(self, msg):
+        dist = avg_minimum(msg.ranges, len(msg.ranges) / 10)
+        # rospy.loginfo('msg distance: %s', avg_minimum(msg.ranges, len(msg.ranges) / 10))
+        return dist > self.__threshold, dist
 
 
 if __name__ == '__main__':
