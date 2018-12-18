@@ -79,13 +79,13 @@ class AgentEnvironment:
         amount_of_turns = new_direction - self.direction_facing
 
         if new_direction is 0:
-            return 90 * math.pi / 180
+            return 0
         if new_direction is 1:
-            return 0
+            return 1.57
         if new_direction is 2:
-            return 0
-        if new_direction is 3:
             return math.pi
+        if new_direction is 3:
+            return -1.57
 
         if amount_of_turns is 0:
             return 0
