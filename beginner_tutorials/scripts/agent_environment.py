@@ -78,6 +78,15 @@ class AgentEnvironment:
         # self.pos_rotation = False  # negative rotation
         amount_of_turns = new_direction - self.direction_facing
 
+        if new_direction is 0:
+            return 90 * math.pi / 180
+        if new_direction is 1:
+            return 0
+        if new_direction is 2:
+            return 0
+        if new_direction is 3:
+            return math.pi
+
         if amount_of_turns is 0:
             return 0
 

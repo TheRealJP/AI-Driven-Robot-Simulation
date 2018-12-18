@@ -110,7 +110,8 @@ class Robot:
         self.__current_tick = 0
         self.__turning = False
         self.__roll = self.__pitch = self.__yaw = 0.0
-        self.__turn_precision = 0.045
+        self.__turn_precision = 0.01
+        self.__error_factor = 0.5
 
         # Position robot
         # scan, for not bumping into wall
@@ -134,14 +135,6 @@ class Robot:
         current_state = self.robot_env.current_state
         return int(self.robot_env.optimal_path[current_state].action)
 
-    def callback_scan(self, msg):
-        if msg.header.frame_id == "/camera_depth_frame":
-            # "dist" is scan_distance to the wall based from the camerapoint
-            self.__can_move, self.__scan_dist = self.scan(msg)
-            rospy.loginfo('multiple point: %s', avg_minimum(msg.ranges[315:330], len(msg.ranges[315:330])))
-            # straight in middle
-
-    # callback scan
     def callback_odom(self, msg):
         # rospy.loginfo('Turning: %s; Ticks: %s / %s', str(self.__turning), str(self.__current_tick), str(self.__ticks))
 
@@ -159,8 +152,10 @@ class Robot:
         if self.__can_move and not self.__turning and has_moving_ended and not turn_first:
             self.move()
         else:
-            self.turn(msg)
-            self.__dist = 0  # reset moving distance of the robot
+            orientation_q = msg.pose.pose.orientation
+            orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
+            self.__roll, self.__pitch, self.__yaw = euler_from_quaternion(orientation_list)
+            self.turn()
 
     def move(self):
         # setting up everything before starting (think calc_euclidian_distance())
@@ -187,27 +182,37 @@ class Robot:
             # robot moved so now we calculate the distance
             self.__dist = self.calc_euclidian_distance()
 
-    def turn(self, msg):
-        rospy.loginfo('turn')
-        # fetch angle (doesnt stay filled for some reason when you isolate it inside an if statement)
-        self.__angle = self.robot_env.rotate(self.action)
-
-        # using yaw to make error margin smaller
-        orientation_q = msg.pose.pose.orientation
-        orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
-        self.__roll, self.__pitch, self.__yaw = euler_from_quaternion(orientation_list)
+    def turn(self):
+        difference = abs(self.__angle - self.__yaw)
+        rospy.loginfo('yaw: %s | difference: %s', self.__yaw, difference)
 
         # config for the start of the turn
         if self.__current_tick < 1:
+            # fetch angle (doesnt stay filled for some reason when you isolate it inside an if statement)
+
+            # todo translate angles to gazebo
+            # -1.57 = 0
+            # 1.57 = math.pi
+            #  0 = 1.57
+            # -1.57 = 3.14
+
+            # angle     |  gazebo
+            # math.pi   |  3.14
+            # 0         |  0
+            # -1.57     |  1.57
+            # 1.57      |  -1.57
+
+            self.__angle = 1.57
+            # self.robot_env.rotate(self.action)
             self.__move_cmd.linear.x = 0
-            self.__move_cmd.angular.z = self.__angular_speed if self.robot_env.pos_rotation else -self.__angular_speed
+            # self.__move_cmd.angular.z = self.__angular_speed if self.robot_env.pos_rotation else -self.__angular_speed
 
             # returns radians to be turned with a given action
             rospy.loginfo('turning %s radians (%s degrees)', self.__angle, self.__angle * 180 / math.pi)
 
             # how long will it take to turn
-            angular_duration = self.__angle / self.__angular_speed
-            self.__ticks = abs(int(angular_duration * self.__rate))
+            # angular_duration = self.__angle / self.__angular_speed
+            # self.__ticks = abs(int(angular_duration * self.__rate))
 
             self.__turning = True
             self.__current_tick = 1
@@ -215,14 +220,23 @@ class Robot:
             # bug: -52 ticks < 1 tick
 
         # stop turning
-        elif self.__current_tick >= self.__ticks:
+        # elif self.__current_tick >= self.__ticks:
+        elif difference <= self.__turn_precision:
             self.__current_tick = 0
+            self.__move_cmd.angular.z = 0
             self.__turning = False
+            # self.__cmd_vel.publish(self.__move_cmd)
+            rospy.loginfo("Finished turning!")
 
         # during the turn
         else:
-            rospy.loginfo('turning %s radians (%s degrees)', self.__angle, self.__angle * 180 / math.pi)
+            rospy.loginfo('continueing to %s radians (%s degrees)', self.__angle, self.__angle * 180 / math.pi)
+            # self.__linear_speed = 0.1 if 0.1 > abs(difference) else abs(difference)
+            # self.__move_cmd.angular.z = self.__angular_speed if self.robot_env.pos_rotation else -self.__angular_speed
+            self.__move_cmd.angular.z = difference * 0.45
+            # self.__angular_speed if self.robot_env.pos_rotation else -self.__angular_speed
             rospy.loginfo('turning at %s radians / s', str(self.__move_cmd.angular.z))
+
             self.__cmd_vel.publish(self.__move_cmd)
             self.__current_tick += 1
 
@@ -230,6 +244,11 @@ class Robot:
         rospy.loginfo('Stopping Roomba')
         self.__cmd_vel.publish(Twist())
         rospy.sleep(1)
+
+    def callback_scan(self, msg):
+        if msg.header.frame_id == "/camera_depth_frame":
+            self.__can_move, self.__scan_dist = self.scan(msg)
+            # rospy.loginfo('multiple point: %s', avg_minimum(msg.ranges[315:330], len(msg.ranges[315:330])))
 
     def scan(self, msg):
         dist = avg_minimum(msg.ranges, len(msg.ranges) / 10)
@@ -240,9 +259,8 @@ class Robot:
 if __name__ == '__main__':
     try:
         env = AgentEnvironment(4, 4, 15)
-
         # x = -1,37 with linear_speed= 0.3
         # x = -1,43 with linear_speed= 0.2
-        roomba = Robot('/mobile_base/commands/velocity', 1, .1, .3, 10, env)
+        roomba = Robot('/mobile_base/commands/velocity', 1, .1, .1, 10, env)
     except:
         rospy.loginfo('Roomba node terminated.')

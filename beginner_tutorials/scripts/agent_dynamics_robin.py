@@ -101,7 +101,6 @@ class Robot:
             orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
             self.__roll, self.__pitch, self.__yaw = euler_from_quaternion(orientation_list)
 
-
         # Move forward if possible
         if move and not self.__turning:
 
@@ -147,7 +146,6 @@ class Robot:
             self.__move_cmd.angular.z = 0
             # self.__move_cmd.linear.x = 0
             self.__cmd_vel.publish(self.__move_cmd)
-
 
     def scan(self, msg):
         dist = avg_minimum(msg.ranges, len(msg.ranges) / 10)
