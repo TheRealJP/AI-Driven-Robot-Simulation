@@ -75,37 +75,14 @@ class AgentEnvironment:
         if self.current_state >= len(self.optimal_path) - 1:
             return 0
 
-        # self.pos_rotation = False  # negative rotation
-        amount_of_turns = new_direction - self.direction_facing
-
-        if new_direction is 0:
+        if new_direction is 0:  # RIGHT
             return 0
-        if new_direction is 1:
+        if new_direction is 1:  # UP
             return 1.57
-        if new_direction is 2:
+        if new_direction is 2:  # LEFT
             return math.pi
-        if new_direction is 3:
+        if new_direction is 3:  # DOWN
             return -1.57
-
-        if amount_of_turns is 0:
-            return 0
-
-        # change to positive rotation
-        if amount_of_turns > 0:
-            self.pos_rotation = True  # positive rotation
-
-        # self.direction_facing = new_direction
-
-        global target_degrees
-        abs_aot = abs(amount_of_turns)
-        if abs_aot is 1:
-            target_degrees = 90 if self.pos_rotation else -90
-        elif abs_aot is 2:
-            target_degrees = 180 if self.pos_rotation else -180
-        elif abs_aot is 3:
-            target_degrees = 270 if self.pos_rotation else -270
-
-        return target_degrees * math.pi / 180
 
     def has_reached_reward(self, reward_reached):
         """

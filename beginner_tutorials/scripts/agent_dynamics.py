@@ -89,11 +89,10 @@ class Robot:
 
         rospy.Rate(rate)
 
-        # Direction & Rotationdatax
+        # Direction & Rotationdata
         self.robot_env = env
         self.robot_env.fill_optimal_path()
         self.action = self.robot_env.direction_facing
-
         # move
         self.next_position = 0
         self.__can_move = True
@@ -103,13 +102,12 @@ class Robot:
         self.__x_start = 0
         self.__goal_distance = 1
         self.__scan_dist = 0
-
         # rotate
         self.__angle = 0
         self.__current_tick = 0
         self.__turning = False
         self.__roll = self.__pitch = self.__yaw = 0.0
-        self.__turn_precision = 0.01
+        self.__turn_precision = 0.02
         self.__error_factor = 0.5
 
         # Position robot
@@ -137,6 +135,9 @@ class Robot:
     def callback_odom(self, msg):
         rospy.loginfo('current_action:%s', self.action)
 
+        if self.robot_env.current_state is 15:
+            self.shutdown()
+
         self.__pos = msg.pose.pose.position
 
         """
@@ -159,6 +160,7 @@ class Robot:
     def move(self):
         # setting up everything before starting (think calc_euclidian_distance())
         if self.__move_cmd.linear.x == 0.0:
+
             # step gives back the next action based on the current action
             self.action = self.robot_env.step(self.get_action_current_state())
 
@@ -188,29 +190,27 @@ class Robot:
     # 1.57      | -1.57
     # -1.57     |  1.57
     def turn(self):
-        difference = abs(self.__angle - self.__yaw)
-        rospy.loginfo('yaw: %s | difference: %s', self.__yaw, difference)
-        # config for the start of the turn
-        if self.__current_tick < 1:
-            self.__angle = self.robot_env.rotate(self.action)
-            self.__move_cmd.linear.x = 0
 
+        difference = abs(self.__angle - self.__yaw)
+        rospy.loginfo('angle: %s - yaw: %s == difference: %s', self.__angle, self.__yaw, difference)
+
+        if self.__current_tick < 1:  # config for the start of the turn
+            self.__angle = self.robot_env.rotate(self.get_action_current_state())
+            self.__move_cmd.linear.x = 0
             self.__turning = True
             self.__current_tick = 1
 
-        # stop turning
-        elif difference <= self.__turn_precision:
+        elif difference <= self.__turn_precision:  # stop turning
             self.__current_tick = 0
             self.__move_cmd.angular.z = 0
             self.__turning = False
-            # self.__cmd_vel.publish(self.__move_cmd)
-            rospy.loginfo("Finished turning!")
-            self.action = self.get_action_current_state()
             self.__dist = 0
+            self.action = self.get_action_current_state()
+            rospy.loginfo("Finished turning!")
 
-        # during the turn
-        else:
-            self.__move_cmd.angular.z = difference * 0.45
+        else:  # during the turn
+            self.__move_cmd.angular.z = \
+                difference * self.__error_factor if difference > self.__angular_speed else self.__angular_speed
             rospy.loginfo('turning at %s radians / s', str(self.__move_cmd.angular.z))
             self.__cmd_vel.publish(self.__move_cmd)
 
@@ -233,6 +233,6 @@ if __name__ == '__main__':
         env = AgentEnvironment(4, 4, 15)
         # x = -1,37 with linear_speed= 0.3
         # x = -1,43 with linear_speed= 0.2
-        roomba = Robot('/mobile_base/commands/velocity', 0.5, .1, .1, 10, env)
+        roomba = Robot('/mobile_base/commands/velocity', 0.75, .18, .1, 10, env)
     except:
         rospy.loginfo('Roomba node terminated.')
