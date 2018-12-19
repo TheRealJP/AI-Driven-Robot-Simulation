@@ -135,9 +135,6 @@ class Robot:
     def callback_odom(self, msg):
         rospy.loginfo('current_action:%s', self.action)
 
-        if self.robot_env.current_state is 15:
-            self.shutdown()
-
         self.__pos = msg.pose.pose.position
 
         """
@@ -147,15 +144,21 @@ class Robot:
         
         Move forward if possible and when not turning and when you passed the set distance goal
         """
-        has_moving_ended = self.__goal_distance > self.__dist
+        has_moving_ended = self.__goal_distance < self.__dist
         turn_first = self.action != self.get_action_current_state()
-        if self.__can_move and not self.__turning and has_moving_ended and not turn_first:
+        movable = self.__can_move and not self.__turning and not has_moving_ended and not turn_first
+
+        if movable:
             self.move()
         else:
             orientation_q = msg.pose.pose.orientation
             orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
             self.__roll, self.__pitch, self.__yaw = euler_from_quaternion(orientation_list)
+
             self.turn()
+
+        if self.robot_env.current_state is 15:
+            self.shutdown()
 
     def move(self):
         # setting up everything before starting (think calc_euclidian_distance())
@@ -209,8 +212,8 @@ class Robot:
             rospy.loginfo("Finished turning!")
 
         else:  # during the turn
-            self.__move_cmd.angular.z = \
-                difference * self.__error_factor if difference > self.__angular_speed else self.__angular_speed
+            self.__move_cmd.angular.z = difference
+
             rospy.loginfo('turning at %s radians / s', str(self.__move_cmd.angular.z))
             self.__cmd_vel.publish(self.__move_cmd)
 

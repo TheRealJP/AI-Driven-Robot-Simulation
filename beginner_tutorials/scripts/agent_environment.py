@@ -75,14 +75,14 @@ class AgentEnvironment:
         if self.current_state >= len(self.optimal_path) - 1:
             return 0
 
-        if new_direction is 0:  # RIGHT
-            return 0
-        if new_direction is 1:  # UP
-            return 1.57
-        if new_direction is 2:  # LEFT
+        if new_direction is 0:  # LEFT
             return math.pi
-        if new_direction is 3:  # DOWN
+        if new_direction is 1:  # DOWN
             return -1.57
+        if new_direction is 2:  # RIGHT
+            return 0
+        if new_direction is 3:  # UP
+            return 1.57
 
     def has_reached_reward(self, reward_reached):
         """
