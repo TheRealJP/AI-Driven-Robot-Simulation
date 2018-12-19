@@ -1,0 +1,18 @@
+[INFO] [1545254185.972735, 0.000000]: spin
+[INFO] [1545254185.981275, 42574.522000]: current_action:2
+[INFO] [1545254185.981597, 42574.522000]: angle: 0 - yaw: -1.56549358432 == difference: 1.56549358432
+[INFO] [1545254185.982269, 42574.523000]: current_action:2
+[INFO] [1545254185.982468, 42574.523000]: angle: -1.57 - yaw: -1.56549339478 == difference: 0.00450660521891
+[INFO] [1545254185.982580, 42574.523000]: Finished turning!
+[INFO] [1545254185.983269, 42574.523000]: current_action:1
+[INFO] [1545254185.984400, 42574.524000]: current_action:1
+[INFO] [1545254185.984696, 42574.525000]: move forward--> current location; x -> 11.5670051999 , y -> -23.8243033042
+[INFO] [1545254185.984840, 42574.525000]: distance done by robot: 0
+[INFO] [1545254185.985366, 42574.525000]: current_action:1
+[INFO] [1545254185.985519, 42574.525000]: move forward--> current location; x -> 11.5670051999 , y -> -23.8243032994
+[INFO] [1545254185.985706, 42574.525000]: distance done by robot: 4.1934022383e-08
+[INFO] [1545254185.986878, 42574.527000]: current_action:1
+
+result: robot moves forward because it thinks that it's finished
+robot is already at -1.56 yaw
+de robot denkt dat 0 in gazebo == -1,56 in rospy??

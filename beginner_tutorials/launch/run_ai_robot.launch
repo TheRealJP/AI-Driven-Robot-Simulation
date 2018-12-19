@@ -39,5 +39,5 @@
     </node>
 
     <!--<node pkg="turtlebot" type="turtlebot_stage" name="TurtleBot" output="screen"/>-->
-    <!--<node pkg="beginner_tutorials" type="agent_dynamics.py" name="AI_Robot" output="screen"/>-->
+    <node pkg="beginner_tutorials" type="agent_dynamics.py" name="AI_Robot" output="screen"/>
 </launch>

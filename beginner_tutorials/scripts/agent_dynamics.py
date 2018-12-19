@@ -59,10 +59,6 @@ def avg_minimum(l, n_min):
     return dist
 
 
-# subscribers in commentaar --> geen actie meer, blijft wachten
-# dus init node name niet echt invloed
-# cmd_vel gebruiken..
-# does scan and odom work together nicely?
 # odom for precise tracking
 # scanner for not bumping into wall
 # -------
@@ -110,14 +106,14 @@ class Robot:
         self.__turn_precision = 0.02
         self.__error_factor = 0.5
 
+        # odom, for tracking distance done
+        self.__odom_subscriber = rospy.Subscriber('/odom', Odometry, self.callback_odom)
+
         # Position robot
         # scan, for not bumping into wall
         self.scanner = rospy.Subscriber('/scan', LaserScan, self.callback_scan)  # i'm subscribing on this topic
-        rospy.loginfo('wait')
-        rospy.wait_for_message('/scan', LaserScan)
-
-        # odom, for tracking distance done
-        self.__odom_subscriber = rospy.Subscriber('/odom', Odometry, self.callback_odom)
+        # rospy.loginfo('wait')
+        # rospy.wait_for_message('/scan', LaserScan)
 
         # Spin
         rospy.loginfo('spin')
@@ -134,7 +130,6 @@ class Robot:
 
     def callback_odom(self, msg):
         rospy.loginfo('current_action:%s', self.action)
-
         self.__pos = msg.pose.pose.position
 
         """
@@ -154,10 +149,12 @@ class Robot:
             orientation_q = msg.pose.pose.orientation
             orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
             self.__roll, self.__pitch, self.__yaw = euler_from_quaternion(orientation_list)
-
             self.turn()
 
-        if self.robot_env.current_state is 15:
+        # todo replace this with something better
+        #  current problem: robot stops at
+
+        if self.robot_env.current_state is self.robot_env.treasure_state:
             self.shutdown()
 
     def move(self):
@@ -177,11 +174,9 @@ class Robot:
             rospy.loginfo('move forward--> current location; x -> %s , y -> %s', self.__pos.x, self.__pos.y)
             rospy.loginfo('distance done by robot: %s', self.__dist)
 
-            self.__cmd_vel.publish(self.__move_cmd)
             speed = self.__goal_distance - self.__dist
-
-            # lowest speed limit or decrementing speed value
-            self.__move_cmd.linear.x = speed if speed > self.__linear_speed else self.__linear_speed
+            self.__move_cmd.linear.x = speed if speed > 0.15 else 0.15
+            self.__cmd_vel.publish(self.__move_cmd)
 
             # robot moved so now we calculate the distance
             self.__dist = self.calc_euclidian_distance()
@@ -194,6 +189,7 @@ class Robot:
     # -1.57     |  1.57
     def turn(self):
 
+        # todo : issue with false positive
         difference = abs(self.__angle - self.__yaw)
         rospy.loginfo('angle: %s - yaw: %s == difference: %s', self.__angle, self.__yaw, difference)
 
@@ -213,8 +209,8 @@ class Robot:
 
         else:  # during the turn
             self.__move_cmd.angular.z = difference
-
             rospy.loginfo('turning at %s radians / s', str(self.__move_cmd.angular.z))
+
             self.__cmd_vel.publish(self.__move_cmd)
 
     def shutdown(self):
@@ -223,12 +219,11 @@ class Robot:
         rospy.sleep(1)
 
     def callback_scan(self, msg):
-        self.__can_move, self.__scan_dist = self.scan(msg)
+        self.__can_move = self.scan(msg)
 
     def scan(self, msg):
         dist = avg_minimum(msg.ranges, len(msg.ranges) / 10)
-        # rospy.loginfo('msg distance: %s', avg_minimum(msg.ranges, len(msg.ranges) / 10))
-        return dist > self.__threshold, dist
+        return dist > self.__threshold
 
 
 if __name__ == '__main__':
