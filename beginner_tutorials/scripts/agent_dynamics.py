@@ -72,6 +72,7 @@ class Robot:
         # Init
         rospy.init_node('run_ai_robot', anonymous=False)
         rospy.on_shutdown(self.shutdown)
+        self.__shutdown_signal = False
 
         # Publishers (ouput)
         self.__cmd_vel = rospy.Publisher(topic, Twist, queue_size=1)
@@ -151,16 +152,16 @@ class Robot:
             self.__roll, self.__pitch, self.__yaw = euler_from_quaternion(orientation_list)
             self.turn()
 
+            if self.__shutdown_signal is True:
+                self.shutdown()
+
         # todo replace this with something better
         #  current problem: robot stops at
 
-        if self.robot_env.current_state is self.robot_env.treasure_state:
-            self.shutdown()
-
     def move(self):
         # setting up everything before starting (think calc_euclidian_distance())
-        if self.__move_cmd.linear.x == 0.0:
 
+        if self.__move_cmd.linear.x == 0.0:
             # step gives back the next action based on the current action
             self.action = self.robot_env.step(self.get_action_current_state())
 
@@ -169,17 +170,21 @@ class Robot:
             self.__y_start = self.__pos.y
             self.__move_cmd.angular.z = 0
             self.__move_cmd.linear.x = self.__linear_speed
+
             return
         else:
             rospy.loginfo('move forward--> current location; x -> %s , y -> %s', self.__pos.x, self.__pos.y)
             rospy.loginfo('distance done by robot: %s', self.__dist)
 
             speed = self.__goal_distance - self.__dist
-            self.__move_cmd.linear.x = speed if speed > 0.15 else 0.15
+            self.__move_cmd.linear.x = speed if speed > self.__linear_speed else self.__linear_speed
             self.__cmd_vel.publish(self.__move_cmd)
 
             # robot moved so now we calculate the distance
             self.__dist = self.calc_euclidian_distance()
+
+            if self.robot_env.current_state is self.robot_env.treasure_state:
+                self.__shutdown_signal = True
 
     # angle     |  gazebo
     # ---------------------
@@ -188,8 +193,6 @@ class Robot:
     # 1.57      | -1.57
     # -1.57     |  1.57
     def turn(self):
-
-        # todo : issue with false positive
         difference = abs(self.__angle - self.__yaw)
         rospy.loginfo('angle: %s - yaw: %s == difference: %s', self.__angle, self.__yaw, difference)
 
@@ -231,6 +234,6 @@ if __name__ == '__main__':
         env = AgentEnvironment(4, 4, 15)
         # x = -1,37 with linear_speed= 0.3
         # x = -1,43 with linear_speed= 0.2
-        roomba = Robot('/mobile_base/commands/velocity', 0.75, .18, .1, 10, env)
+        roomba = Robot('/mobile_base/commands/velocity', 0.75, .2, .1, 10, env)
     except:
         rospy.loginfo('Roomba node terminated.')
