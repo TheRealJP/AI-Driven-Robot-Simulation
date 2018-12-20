@@ -1,8 +1,5 @@
 #! /usr/bin/env python
 
-# ros gaat niet verder dan scripts zoeken
-# from agent_environment import AgentEnvironment
-
 import rospy
 from math import pi
 from math import isnan
@@ -17,11 +14,6 @@ import math
 from tf.transformations import euler_from_quaternion
 
 from agent_environment import AgentEnvironment
-
-"""
-todo: translate states to coordinates on the go? starting with the current coordinate as a parameter
-for example: starting on [0.5,0.5]  or  self.optimal_path[0].state next state in that direction [0.5 ,0.5+1] 
-"""
 
 
 def dev(x, l):
@@ -57,14 +49,6 @@ def avg_minimum(l, n_min):
     # rospy.loginfo('dist: %s, nbr of points %s', str(dist), str(n))
 
     return dist
-
-
-# odom for precise tracking
-# scanner for not bumping into wall
-# -------
-# custom world file launch command:
-# roslaunch turtlebot_gazebo turtlebot_world.launch world_
-# file:=/home/gandalf/catkin_ws/src/ROS_Robotics/beginner_tutorials/worlds/static_boxes
 
 
 class Robot:
@@ -110,11 +94,8 @@ class Robot:
         # odom, for tracking distance done
         self.__odom_subscriber = rospy.Subscriber('/odom', Odometry, self.callback_odom)
 
-        # Position robot
         # scan, for not bumping into wall
         self.scanner = rospy.Subscriber('/scan', LaserScan, self.callback_scan)  # i'm subscribing on this topic
-        # rospy.loginfo('wait')
-        # rospy.wait_for_message('/scan', LaserScan)
 
         # Spin
         rospy.loginfo('spin')
@@ -152,16 +133,14 @@ class Robot:
             self.__roll, self.__pitch, self.__yaw = euler_from_quaternion(orientation_list)
             self.turn()
 
+            # shutdown when last moving action is done
             if self.__shutdown_signal is True:
                 self.shutdown()
 
-        # todo replace this with something better
-        #  current problem: robot stops at
-
     def move(self):
-        # setting up everything before starting (think calc_euclidian_distance())
-
+        # setting up everything before starting
         if self.__move_cmd.linear.x == 0.0:
+
             # step gives back the next action based on the current action
             self.action = self.robot_env.step(self.get_action_current_state())
 
@@ -170,7 +149,6 @@ class Robot:
             self.__y_start = self.__pos.y
             self.__move_cmd.angular.z = 0
             self.__move_cmd.linear.x = self.__linear_speed
-
             return
         else:
             rospy.loginfo('move forward--> current location; x -> %s , y -> %s', self.__pos.x, self.__pos.y)
@@ -232,8 +210,6 @@ class Robot:
 if __name__ == '__main__':
     try:
         env = AgentEnvironment(4, 4, 15)
-        # x = -1,37 with linear_speed= 0.3
-        # x = -1,43 with linear_speed= 0.2
         roomba = Robot('/mobile_base/commands/velocity', 0.75, .2, .1, 10, env)
     except:
         rospy.loginfo('Roomba node terminated.')
