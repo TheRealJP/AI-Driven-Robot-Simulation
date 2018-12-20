@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 import csv
 import math
 
@@ -80,7 +78,7 @@ class AgentEnvironment:
         if new_direction is 1:  # DOWN
             return -1.57
         if new_direction is 2:  # RIGHT
-            return 0
+            return -0  # 6.28 - 1.57 ---> blijft draaien
         if new_direction is 3:  # UP
             return 1.57
 
@@ -100,7 +98,8 @@ class AgentEnvironment:
         :return:
         """
         with open(
-                '/home/gandalf/catkin_ws/src/ROS_Robotics/beginner_tutorials/scripts/Skynet_alpha/voorbeeld_policy.csv',
+                '/home/jonathanpeers/catkin_ws/src/ROS_Robotics/beginner_tutorials/scripts/Skynet_alpha'
+                '/voorbeeld_policy.csv',
                 'r') as f:
             reader = csv.reader(f)
             for file_row in reader:

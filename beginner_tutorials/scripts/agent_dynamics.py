@@ -1,15 +1,12 @@
 #! /usr/bin/env python
 
 import rospy
-from math import pi
 from math import isnan
 from math import sqrt
 
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Twist
-import csv
-import math
 
 from tf.transformations import euler_from_quaternion
 
@@ -51,13 +48,21 @@ def avg_minimum(l, n_min):
     return dist
 
 
+"""
+debugging: node in commentaar, in pycharm debugger starten --> msg data blijft hetzelfde en gazebo yaw komt niet overeen
+rostopic message rate vertragen
+todo: scan gebruiken om afstand tot muur te bepalen --> ook gebruiken als stop 
+    bv: (self.boolean = (scandistance - todo = 3 -1  = 2 < current distance))
+
+"""
+
+
 class Robot:
     def __init__(self, topic, threshold, linear_speed, angular_speed, rate, env):
         # Init
         rospy.init_node('run_ai_robot', anonymous=False)
         rospy.on_shutdown(self.shutdown)
         self.__shutdown_signal = False
-
         # Publishers (ouput)
         self.__cmd_vel = rospy.Publisher(topic, Twist, queue_size=1)
 
@@ -88,7 +93,7 @@ class Robot:
         self.__current_tick = 0
         self.__turning = False
         self.__roll = self.__pitch = self.__yaw = 0.0
-        self.__turn_precision = 0.02
+        self.__turn_precision = 0.1
         self.__error_factor = 0.5
 
         # odom, for tracking distance done
@@ -111,17 +116,17 @@ class Robot:
         return int(self.robot_env.optimal_path[current_state].action)
 
     def callback_odom(self, msg):
-        rospy.loginfo('current_action:%s', self.action)
+
+        rospy.loginfo_throttle(period=0.5, msg=('current_action:%s', self.action))
         self.__pos = msg.pose.pose.position
 
         """
-        $scanner gives back total distance from where you stand
-        scan_dist - dist_todo = going_to_this_dist --> do this one time when you stand still (linear speed is 0...)
-        amount_todo_now >= scan_dist
-        
         Move forward if possible and when not turning and when you passed the set distance goal
         """
         has_moving_ended = self.__goal_distance < self.__dist
+        if has_moving_ended:
+            self.__dist = 0
+
         turn_first = self.action != self.get_action_current_state()
         movable = self.__can_move and not self.__turning and not has_moving_ended and not turn_first
 
@@ -151,11 +156,12 @@ class Robot:
             self.__move_cmd.linear.x = self.__linear_speed
             return
         else:
-            rospy.loginfo('move forward--> current location; x -> %s , y -> %s', self.__pos.x, self.__pos.y)
-            rospy.loginfo('distance done by robot: %s', self.__dist)
+            rospy.loginfo_throttle(period=0.5, msg=(
+            'move forward--> current location; x -> %s , y -> %s', self.__pos.x, self.__pos.y))
+            rospy.loginfo_throttle(period=0.5, msg=('distance done by robot: %s', self.__dist))
 
             speed = self.__goal_distance - self.__dist
-            self.__move_cmd.linear.x = speed if speed > self.__linear_speed else self.__linear_speed
+            self.__move_cmd.linear.x = speed if speed > 0.08 else 0.08
             self.__cmd_vel.publish(self.__move_cmd)
 
             # robot moved so now we calculate the distance
@@ -171,8 +177,18 @@ class Robot:
     # 1.57      | -1.57
     # -1.57     |  1.57
     def turn(self):
-        difference = abs(self.__angle - self.__yaw)
-        rospy.loginfo('angle: %s - yaw: %s == difference: %s', self.__angle, self.__yaw, difference)
+        """
+        yaw - 0 = yaw --> blijft draaien --> yaw wordt hoger en hoger
+        :return:
+        """
+        has_correct_radians = self.__angle - self.__turn_precision <= self.__yaw <= self.__angle + self.__turn_precision
+        difference = abs(self.__angle - self.__yaw)  # yaw 1,57 - angle 0 = 1
+        # if difference > 3.14:
+        #     difference = difference - 3.14
+        # if abs(self.__yaw == difference):
+        #     difference = 0.1 - self.__yaw
+        rospy.loginfo_throttle(period=0.05,
+                               msg=('angle: %s - yaw: %s == difference: %s', self.__angle, self.__yaw, difference))
 
         if self.__current_tick < 1:  # config for the start of the turn
             self.__angle = self.robot_env.rotate(self.get_action_current_state())
@@ -180,18 +196,20 @@ class Robot:
             self.__turning = True
             self.__current_tick = 1
 
-        elif difference <= self.__turn_precision:  # stop turning
+        # elif difference <= self.__turn_precision:  # stop turning
+        elif has_correct_radians or difference <= self.__turn_precision:  # stop turning
             self.__current_tick = 0
             self.__move_cmd.angular.z = 0
             self.__turning = False
-            self.__dist = 0
+            # self.__dist = 0
             self.action = self.get_action_current_state()
             rospy.loginfo("Finished turning!")
-
+            # rospy.sleep(1)
         else:  # during the turn
-            self.__move_cmd.angular.z = difference
-            rospy.loginfo('turning at %s radians / s', str(self.__move_cmd.angular.z))
 
+            self.__move_cmd.angular.z = difference  # if difference < 0.1 else 0.1
+            rospy.loginfo_throttle(period=0.5, msg=('turning at %s radians / s', str(self.__move_cmd.angular.z)))
+            # publish the speed
             self.__cmd_vel.publish(self.__move_cmd)
 
     def shutdown(self):
@@ -210,6 +228,7 @@ class Robot:
 if __name__ == '__main__':
     try:
         env = AgentEnvironment(4, 4, 15)
-        roomba = Robot('/mobile_base/commands/velocity', 0.75, .2, .1, 10, env)
+        roomba = Robot('/mobile_base/commands/velocity',
+                       0.75, .15, .2, 10, env)
     except:
         rospy.loginfo('Roomba node terminated.')
