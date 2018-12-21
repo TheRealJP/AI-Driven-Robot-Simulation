@@ -51,6 +51,7 @@ def avg_minimum(l, n_min):
 """
 debugging: node in commentaar, in pycharm debugger starten --> msg data blijft hetzelfde en gazebo yaw komt niet overeen
 rostopic message rate vertragen
+
 todo: scan gebruiken om afstand tot muur te bepalen --> ook gebruiken als stop 
     bv: (self.boolean = (scandistance - todo = 3 -1  = 2 < current distance))
 
@@ -93,7 +94,7 @@ class Robot:
         self.__current_tick = 0
         self.__turning = False
         self.__roll = self.__pitch = self.__yaw = 0.0
-        self.__turn_precision = 0.1
+        self.__turn_precision = 0.030
         self.__error_factor = 0.5
 
         # odom, for tracking distance done
@@ -228,7 +229,6 @@ class Robot:
 if __name__ == '__main__':
     try:
         env = AgentEnvironment(4, 4, 15)
-        roomba = Robot('/mobile_base/commands/velocity',
-                       0.75, .15, .2, 10, env)
+        roomba = Robot('/mobile_base/commands/velocity', 0.75, .15, .2, 10, env)
     except:
         rospy.loginfo('Roomba node terminated.')

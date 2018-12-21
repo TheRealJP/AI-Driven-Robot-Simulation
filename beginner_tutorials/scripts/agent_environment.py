@@ -78,19 +78,9 @@ class AgentEnvironment:
         if new_direction is 1:  # DOWN
             return -1.57
         if new_direction is 2:  # RIGHT
-            return -0  # 6.28 - 1.57 ---> blijft draaien
+            return -0
         if new_direction is 3:  # UP
             return 1.57
-
-    def has_reached_reward(self, reward_reached):
-        """
-        opencv gives back boolean and tells robot to stop
-        if opencv sees the endgoal AND the next action is towards the last state then stop
-        :param reward_reached:
-        :return:
-        """
-        # self.reward_reached = reward_reached and self.next_state == len(self.optimal_path) - 1
-        return reward_reached
 
     def fill_optimal_path(self):
         """
