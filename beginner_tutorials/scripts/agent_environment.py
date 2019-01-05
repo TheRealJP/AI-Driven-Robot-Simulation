@@ -85,14 +85,24 @@ class AgentEnvironment:
     def fill_optimal_path(self):
         """
         extract the optimal path
+        first it will determine what the action with the biggest policy value is
+        and will filter out only those policies in the next reading of the file
         :return:
         """
-        with open(
-                '/home/jonathanpeers/catkin_ws/src/ROS_Robotics/beginner_tutorials/scripts/Skynet_alpha'
-                '/voorbeeld_policy.csv',
-                'r') as f:
+
+        with open('/home/gandalf/catkin_ws/src/ROS_Robotics/beginner_tutorials/scripts/Skynet_alpha'
+                  '/files/voorbeeld_policy2.csv', 'r') as f:
             reader = csv.reader(f)
+            max_policy_value = 0
             for file_row in reader:
-                if float(file_row[2]) > 0.5:
+                if float(file_row[2]) >= max_policy_value:
+                    max_policy_value = float(file_row[2])
+
+        with open('/home/gandalf/catkin_ws/src/ROS_Robotics/beginner_tutorials/scripts/Skynet_alpha'
+                  '/files/voorbeeld_policy2.csv', 'r') as f2:
+            reader2 = csv.reader(f2)
+            for file_row in reader2:
+                print file_row[2] is max_policy_value
+                if float(file_row[2]) == max_policy_value:
                     p = Policy(file_row[0], file_row[1], file_row[2])
                     self.optimal_path.append(p)
