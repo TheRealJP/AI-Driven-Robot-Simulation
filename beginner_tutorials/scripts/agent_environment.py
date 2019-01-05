@@ -102,7 +102,6 @@ class AgentEnvironment:
                   '/files/voorbeeld_policy2.csv', 'r') as f2:
             reader2 = csv.reader(f2)
             for file_row in reader2:
-                print file_row[2] is max_policy_value
                 if float(file_row[2]) == max_policy_value:
                     p = Policy(file_row[0], file_row[1], file_row[2])
                     self.optimal_path.append(p)
