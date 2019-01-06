@@ -90,16 +90,17 @@ class AgentEnvironment:
         :return:
         """
 
-        with open('/home/gandalf/catkin_ws/src/ROS_Robotics/beginner_tutorials/scripts/Skynet_alpha'
-                  '/files/voorbeeld_policy2.csv', 'r') as f:
+        filename = '/home/jonathanpeers/catkin_ws/src/ROS_Robotics/beginner_tutorials/scripts/Skynet_alpha' \
+                   '/files/voorbeeld_policy2.csv'
+
+        with open(filename, 'r') as f:
             reader = csv.reader(f)
             max_policy_value = 0
             for file_row in reader:
                 if float(file_row[2]) >= max_policy_value:
                     max_policy_value = float(file_row[2])
 
-        with open('/home/gandalf/catkin_ws/src/ROS_Robotics/beginner_tutorials/scripts/Skynet_alpha'
-                  '/files/voorbeeld_policy2.csv', 'r') as f2:
+        with open(filename, 'r') as f2:
             reader2 = csv.reader(f2)
             for file_row in reader2:
                 if float(file_row[2]) == max_policy_value:
