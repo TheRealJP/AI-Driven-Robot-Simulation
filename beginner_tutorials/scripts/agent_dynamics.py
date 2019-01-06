@@ -48,16 +48,6 @@ def avg_minimum(l, n_min):
     return dist
 
 
-"""
-debugging: node in commentaar, in pycharm debugger starten --> msg data blijft hetzelfde en gazebo yaw komt niet overeen
-rostopic message rate vertragen
-
-todo: scan gebruiken om afstand tot muur te bepalen --> ook gebruiken als stop 
-    bv: (self.boolean = (scandistance - todo = 3 -1  = 2 < current distance))
-
-"""
-
-
 class Robot:
     def __init__(self, topic, threshold, linear_speed, angular_speed, rate, env):
         # Init
@@ -178,16 +168,8 @@ class Robot:
     # 1.57      | -1.57
     # -1.57     |  1.57
     def turn(self):
-        """
-        yaw - 0 = yaw --> blijft draaien --> yaw wordt hoger en hoger
-        :return:
-        """
         has_correct_radians = self.__angle - self.__turn_precision <= self.__yaw <= self.__angle + self.__turn_precision
         difference = abs(self.__angle - self.__yaw)  # yaw 1,57 - angle 0 = 1
-        # if difference > 3.14:
-        #     difference = difference - 3.14
-        # if abs(self.__yaw == difference):
-        #     difference = 0.1 - self.__yaw
         rospy.loginfo_throttle(period=0.05,
                                msg=('angle: %s - yaw: %s == difference: %s', self.__angle, self.__yaw, difference))
 
@@ -202,10 +184,8 @@ class Robot:
             self.__current_tick = 0
             self.__move_cmd.angular.z = 0
             self.__turning = False
-            # self.__dist = 0
             self.action = self.get_action_current_state()
             rospy.loginfo("Finished turning!")
-            # rospy.sleep(1)
         else:  # during the turn
 
             self.__move_cmd.angular.z = difference  # if difference < 0.1 else 0.1
