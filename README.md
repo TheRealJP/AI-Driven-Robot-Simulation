@@ -1,7 +1,7 @@
 # AI-Driven-Robot-Simulation
 
 ## About
-The AI code can be found in my "Markov-Decision-Proces" repo
+The AI code can be found in my "[Markov-Decision-Proces](https://github.com/TheRealJonathanPeers/Markov-Decision-Proces)" repo.
 Robotics code can be found in this repo
 
 For the AI part we used Markov Decision Proces (MDP). 
